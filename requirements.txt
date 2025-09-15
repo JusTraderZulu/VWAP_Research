@@ -1,8 +1,0 @@
-polygon-api-client
-pandas
-numpy
-matplotlib
-scikit-learn
-scipy
-plotly
-
