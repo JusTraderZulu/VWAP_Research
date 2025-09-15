@@ -1,38 +1,48 @@
-# VWAP Reversion EDA — Intraday Crypto Study
+# VWAP Reversion EDA — Intraday Crypto & FX
 
-This repository presents a clean, reproducible exploratory study of intraday VWAP reversion in crypto markets. The notebook estimates the probability that price reverts to VWAP after sufficiently large deviations and examines how that probability changes across higher-timeframe regimes, deviation size, time-of-day, and volatility. The repo is intentionally minimal: just the research notebook and this README, for easy viewing.
+This repository presents a clean, reproducible exploratory study of intraday VWAP reversion. The notebook estimates the probability that price reverts to VWAP after sufficiently large deviations and examines how that probability changes across higher-timeframe regimes, deviation size, time-of-day, and volatility.
 
-## Research question
-- What is the empirical probability that intraday price reverts to VWAP after a sufficiently large deviation?
-- How does that probability vary by higher-timeframe Hurst regime (mean-reverting, noisy, trending), deviation size, time-of-day, and volatility level?
+## Research method (short)
+- Data: Polygon 5-minute aggregates; crypto and FX.
+- Event (anchored VWAP reversion):
+  - Trigger: |close − anchored VWAP| / anchored VWAP ≥ threshold (e.g., 0.5–1.5% for crypto; 0.05–0.20% for FX). Anchored VWAP resets per UTC day.
+  - Success: signed deviation flips across zero within N bars (N ∈ {5,10,20}).
+- Context: Rolling Hurst (R/S) on 1H returns (EMA-smoothed). Regimes: MR ≤ 0.45, NOISY 0.45–0.55, TREND ≥ 0.55.
+- EDA: Base P(revert) by regime & asset; conditional structure (Deviation × Regime × Side); time-of-day & volatility slices; stability (first vs second half).
+- Decision gate: STOP if rare/flat/unstable; KEEP if base edge + monotonic conditionals + stability. Per-asset gating prevents weak tickers from blocking the study.
 
-## Data & period
-- Source: Polygon aggregates (official Python SDK) at 5-minute resolution
-- Assets: crypto tickers (normalization supports both `BTC-USD` and `X:BTCUSD` forms)
-- Span: 2023-01-01 → 2025-09-01 (editable in notebook)
+## Results summary
 
-## Event definition (anchored VWAP reversion)
-- Trigger: |close − anchored VWAP| / anchored VWAP ≥ threshold (0.5%, 1.0%, 1.5%). Anchored VWAP resets each UTC day.
-- Outcome (success): the signed deviation of CLOSE relative to the (anchored) VWAP flips across zero within N bars (N ∈ {5, 10, 20}).
+### FX (VWAP_Reversion_FX)
+- Study: VWAP Reversion EDA
+- Span: 2023-01-01 → 2025-09-01
+- Decision: KEEP
+- Assets (kept): ['C:EURUSD', 'C:GBPUSD', 'C:USDCHF', 'C:USDJPY']
+- Triggers (kept): 350920
+- Mean P(revert) (kept): 0.111
+- Monotonicity pass rate: 0.89
+- Stability median |Δp|: 0.024
+- Packaged: studies/20250915_213929_VWAP_Reversion_FX
 
-## Higher-timeframe context (regimes)
-- Rolling Hurst (R/S) on 1H returns, smoothed with EMA.
-- Regimes: MR ≤ 0.45, NOISY 0.45–0.55, TREND ≥ 0.55. Optional hysteresis is supported for smoother labels.
+### Crypto (VWAP_Reversion)
+- Study: VWAP Reversion EDA
+- Span: 2023-01-01 → 2025-09-01
+- Decision: KEEP
+- Assets (kept): ['X:AVAXUSD', 'X:BTCUSD', 'X:ETHUSD', 'X:SOLUSD']
+- Triggers (kept): 322231
+- Mean P(revert) (kept): 0.094
+- Monotonicity pass rate: 0.81
+- Stability median |Δp|: 0.012
+- Packaged: studies/20250915_202810_VWAP_Reversion
 
-## What we found (high level)
-- Base edge: For large-cap crypto (e.g., BTC, ETH, SOL), P(revert) typically sits around ≈ 8–10% for th=1.0%, N=10, with NOISY dominating regime time and small but clear mass in TREND.
-- Structure: P(revert) increases with larger deviation bins (monotonic), especially outside the smallest bin.
-- Stability: First vs second half comparisons show small median |Δp| for the kept assets (indicative of robustness). Several smaller alts showed higher instability and were excluded by the per-asset gate.
-- Kept assets (example from our run): BTC, ETH, SOL, AVAX. Unstable alts were rejected by the gate (insufficient triggers, weak monotonicity, or higher |Δp|).
+## Next steps
+- Calibration-ready modeling on kept assets (e.g., logistic with calibration); evaluate AUC, Brier, calibration.
+- Regime-aware thresholds for decisioning; size by probability and volatility; time stop = horizon.
+- Cost-aware backtest sketch (fees, slippage) with turnover controls; PnL by regime/time-of-day.
+- Robustness: rolling/expanding time splits; sensitivity to thresholds/horizons; cross-asset consistency.
 
-These observations are meant as guideposts for whether a modeling step (probability modeling, calibration) is warranted next. The study is EDA-only; it prints a decision (STOP or KEEP) based on frequency, monotonic conditionals, and stability.
+## Files
+- Intraday_Event_Study.ipynb — crypto study (template flow; also used as a base for FX)
+- FX_VWAP_Event_Study.ipynb — FX study (same framework, FX thresholds & tickers)
 
-## Notebook structure
-- Imports & Config → Helpers reload → Data loading (Polygon) → Feature engineering
-- Hurst context & regime labeling → Event labeling (anchored VWAP reversion)
-- EDA tables (base and conditionals) → Checks (monotonicity, stability)
-- Per-asset gate + overall decision (STOP/KEEP)
-- Visuals (global + per-asset; heatmaps, reliability, time-of-day, TTR)
-- Packaging (omitted in this display repo)
-
-If you’re viewing on GitHub, open `Intraday_Event_Study.ipynb` to step through the analysis.
+Open either notebook on GitHub to browse or run locally in a venv (first cell).
